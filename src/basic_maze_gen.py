@@ -14,15 +14,17 @@ from random import shuffle, randrange, randint, choice
 
 
 def maze_viz(maze, solution=None):
+
+    # if the solution is provided, highlight the path
+    if solution is not None:
+        for x, y in solution:
+            maze[x][y] = 4
+
     plt.imshow(maze, cmap='gray')
     plt.title("Simple Maze")
     plt.show()
 
 def gen_maze_DFS(size: int) -> np.array:
-    # Check if the size is odd and positive
-    if size % 2 == 0 and size < 0:
-        print("ERROR: The size must be odd and positive.")
-
     # Create an array of the given size
     temp_maze = np.zeros((size, size), dtype=int)
     # temp_maze = np.random.choice([0, 1], size=(size, size), p=[0.7, 0.3])
@@ -70,13 +72,50 @@ def gen_maze_DFS(size: int) -> np.array:
 
     # Set the start and goal state in the maze
     temp_maze[start_x][start_y] = 3
-    temp_maze[goal_x][goal_y] = 3
+    temp_maze[goal_x][goal_y] = 1
 
     return temp_maze, (start_x, start_y), (goal_x, goal_y)
 
-def solve_maze_gen(maze) -> np.array:
-    pass
+def check_valid_move(maze, visited, x, y):
+    return (0 <= x < len(maze) and 0 <= y < len(maze[0]) and
+            maze[x][y] == 1 and not visited[x][y])
 
+def solver_DFS(maze, visited, path, x, y, goal):
+
+    if (x, y) == goal:
+        path.append((x, y))
+        return True
+
+    # Add current coordinate to visited stack
+    visited[x][y] = True
+    path.append((x, y))
+
+    moves = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+    # moves = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
+    for move in moves:
+        nx, ny = move[0] + x, move[1] + y
+        if check_valid_move(maze, visited, nx, ny):
+            if solver_DFS(maze, visited, path, nx, ny, goal):
+                return True
+
+    # Backtrack
+    path.pop()
+    return False
+
+def solve_maze_gen(maze, start_point, goal_point) -> np.array:
+    # Path stack
+    path = []
+
+    # Visited stack
+    visited = [[False for _ in range(len(maze[0]))] for _ in range(len(maze))]
+
+    # generate solver
+    if solver_DFS(maze, visited, path, start_point[0], start_point[1], goal_point):
+        print("Found a path!")
+        return path
+    else:
+        return None
 
 def main():
     # Argument parser
@@ -85,13 +124,20 @@ def main():
     parser.add_argument("-s", "--solve", action="store_true")
     opts = parser.parse_args()
 
+    # Check maze size
+    if opts.size % 2 == 0 or opts.size <= 0:
+        print("ERROR: The size must be odd and positive.")
+        exit()
+
     # Generate maze
     maze, maze_start, maze_goal = gen_maze_DFS(opts.size)
+    # print(maze)
 
-    print(maze)
+    path  = solve_maze_gen(maze, maze_start, maze_goal)
+    # print(path)
 
     # View maze
-    maze_viz(maze)
+    maze_viz(maze, path)
 
 if __name__ == "__main__":
     main()
