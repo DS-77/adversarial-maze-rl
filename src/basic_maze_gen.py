@@ -2,8 +2,8 @@
 This module generates a Maze using Prim and DFS algorithm. It also provides a solution.
 
 Created: 28-03-2025
-Edited: 29-03-2025
-Version: 1.0.0
+Edited: 31-03-2025
+Version: 1.0.2
 """
 
 import os
@@ -122,6 +122,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--size", type=int, required=True, help="The size of the maze. Must be odd and positive.")
     parser.add_argument("-s", "--solve", action="store_true")
+    parser.add_argument("-a", "--algorithm", type=str, help="The name of the generation algorithm: 'prim', 'kruskal', and 'DFS'")
     opts = parser.parse_args()
 
     # Check maze size
@@ -129,15 +130,33 @@ def main():
         print("ERROR: The size must be odd and positive.")
         exit()
 
+    # Maze
+    maze = None
+    maze_start = None
+    maze_goal = None
+
     # Generate maze
-    maze, maze_start, maze_goal = gen_maze_DFS(opts.size)
-    # print(maze)
+    if opts.algorithm == "prim":
+        pass
+    elif opts.algorithm == "DFS":
+        maze, maze_start, maze_goal = gen_maze_DFS(opts.size)
+        # print(maze)
 
-    path  = solve_maze_gen(maze, maze_start, maze_goal)
-    # print(path)
+    elif opts.algorithm == "kruskal":
+        pass
 
-    # View maze
-    maze_viz(maze, path)
+    else:
+        print("ERROR: Unknown algorithm.")
+        exit()
+
+    if opts.solve :
+        path = solve_maze_gen(maze, maze_start, maze_goal)
+        # print(path)
+
+        # View maze
+        maze_viz(maze, path)
+    else:
+        maze_viz(maze)
 
 if __name__ == "__main__":
     main()
