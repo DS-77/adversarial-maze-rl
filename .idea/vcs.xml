@@ -2,5 +2,6 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="/run/media/th/Vault-Lab/Maze_gen_solver" vcs="Git" />
   </component>
 </project>
