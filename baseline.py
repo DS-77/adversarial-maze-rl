@@ -8,7 +8,7 @@ Edited: 02-04-2025
 Version: 1.0.0
 """
 import numpy as np
-from metrics import triviality, difficulty
+from metrics.metrics import triviality, difficulty
 from basic_maze_gen import gen_maze_DFS, gen_maze_Prims, solve_maze_gen
 
 

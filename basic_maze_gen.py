@@ -1,6 +1,7 @@
 """
 This module generates a Maze using Prim and DFS algorithm. It also provides a solution.
 
+Author: Deja S.
 Created: 28-03-2025
 Edited: 31-03-2025
 Version: 1.0.2
@@ -11,10 +12,10 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from random import shuffle, randrange, randint, choice
-from metrics import triviality, difficulty, A_star_solver
+from metrics.metrics import triviality, difficulty, A_star_solver
 
 
-def maze_viz(maze, solution=None):
+def maze_viz(maze, solution=None, iter=None ,path=None):
 
     # if the solution is provided, highlight the path
     if solution is not None:
@@ -23,7 +24,11 @@ def maze_viz(maze, solution=None):
 
     plt.imshow(maze, cmap='gray')
     plt.title("Simple Maze")
-    plt.show()
+    if path is not None:
+        plt.savefig(f"{path}/maze_gen_{iter}.png")
+    else:
+        plt.show()
+
 
 def gen_maze_DFS(size) -> np.array:
     # Create an array of the given size
