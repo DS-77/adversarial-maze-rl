@@ -77,13 +77,13 @@ def gen_maze_DFS(size) -> np.array:
     traverse(start_x, start_y)
 
     # Set the start and goal state in the maze
-    temp_maze[start_x][start_y] = 1
-    temp_maze[goal_x][goal_y] = 1
+    temp_maze[start_y][start_x] = 2
+    temp_maze[goal_y][goal_x] = 3
 
     return temp_maze, (start_x, start_y), (goal_x, goal_y)
 
-def gen_maze_kruskal(size):
-    pass
+# def gen_maze_kruskal(size):
+#     pass
 
 
 def gen_maze_Prims(size) -> tuple[np.array, tuple[int, int], tuple[int, int]]:
@@ -145,8 +145,8 @@ def gen_maze_Prims(size) -> tuple[np.array, tuple[int, int], tuple[int, int]]:
                 if (nx, ny) not in frontier:
                     frontier.append((nx, ny))
 
-    temp_maze[goal_y, goal_x] = 1
-    temp_maze[start_y, start_x] = 1
+    temp_maze[goal_y, goal_x] = 3
+    temp_maze[start_y, start_x] = 2
 
     # print(f"Start Point: ({start_x}, {start_y})")
     # print(f"End Point: ({goal_x}, {goal_y})")
@@ -157,8 +157,7 @@ def gen_maze_Prims(size) -> tuple[np.array, tuple[int, int], tuple[int, int]]:
 def check_valid_move(maze, visited, y, x) -> bool:
     # Note the order: y, x for numpy array indexing
     return (0 <= y < maze.shape[0] and 0 <= x < maze.shape[1] and
-            maze[y, x] == 1 and not visited[y][x])
-
+            (maze[y, x] == 1 or maze[y, x] == 3) and not visited[y][x])
 
 def solver_DFS(maze, visited, path, start_x, start_y, goal, steps) -> bool:
     y, x = start_y, start_x
@@ -246,10 +245,10 @@ def main():
 
     if opts.solve :
         path, steps = solve_maze_gen(maze, maze_start, maze_goal)
-        # print(steps[0])
+        print(path)
 
         # View maze
-        maze_viz(maze, path)
+        maze_viz(maze, solution=path)
     else:
         # View maze
         maze_viz(maze)

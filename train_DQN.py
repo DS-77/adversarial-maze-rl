@@ -61,7 +61,7 @@ def train_generator(generator, solver_network, generator_optimizer, memory, num_
             if not success:
                 reward_signal = 1.0
             else:
-                reward_signal = total_solver_steps / (num_solver_episodes * max_steps_per_episode)
+                reward_signal = 3 + total_solver_steps / (num_solver_episodes * max_steps_per_episode)
 
         # Generator update step
         logits = generator.forward(input_vector)
@@ -78,7 +78,7 @@ def train_generator(generator, solver_network, generator_optimizer, memory, num_
 
 def train_solver(env, solver_network, memory, num_episodes, optimiser, device,
                  epsilon_start=0.9, epsilon_end=0.05, epsilon_decay=0.995,
-                 discount_factor=0.95, batch_size=32):
+                 discount_factor=0.95, batch_size=32, max_steps=100):
 
     epsilon = epsilon_start
 
@@ -87,8 +87,9 @@ def train_solver(env, solver_network, memory, num_episodes, optimiser, device,
         state = env.get_encoded_state()
         done = False
         total_reward = 0
+        step_count = 0
 
-        while not done:
+        while not done and step_count < max_steps:
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
             action = solver_network.get_action(state, epsilon)
             _, reward, done, _ = env.step(action)
@@ -97,6 +98,7 @@ def train_solver(env, solver_network, memory, num_episodes, optimiser, device,
             memory.add(state, action, reward, next_state, done)
             state = next_state
             total_reward += reward
+            step_count += 1
 
             if memory.get_length() >= batch_size:
                 batch = memory.sample(batch_size)
@@ -124,7 +126,8 @@ def train_solver(env, solver_network, memory, num_episodes, optimiser, device,
                 optimiser.step()
 
         epsilon = max(epsilon_end, epsilon * epsilon_decay)
-        print(f"[SOL] Ep {episode}: Reward: {total_reward:.2f}, Epsilon: {epsilon:.3f}")
+        print(f"[SOL] Ep {episode}: Reward: {total_reward:.2f}, Epsilon: {epsilon:.3f}, Steps: {step_count}")
+
 
 
 def main():
@@ -141,7 +144,7 @@ def main():
 
     # Required Directories
     output_directory_root = "./runs"
-    exp_dir = f"{output_directory_root}/exp_{date.today()}"
+    exp_dir = f"{output_directory_root}/exp_{date.today()}_DQN"
     checkpoint_path = f"{exp_dir}/weights"
     log_path = f"{exp_dir}/logs"
     sample_imgs = f"{exp_dir}/maze_images"
@@ -300,19 +303,6 @@ def main():
         save_models(maze_generator, maze_solver, path_prefix=checkpoint_path, iteration=i + 1)
 
     writer.close()
-
-    # Threading version of training
-    # thread1 = threading.Thread(target=train_generator_parallel,
-    #                            args=(maze_generator, maze_solver, env, gen_optimiser, batch_size, sol_ep_num,
-    #                                  gen_ep_num, maze_size, memory))
-    # thread2 = threading.Thread(target=train_solver_parallel,
-    #                            args=(env, maze_solver, gen_ep_num + sol_ep_num, sol_optimiser, memory, device))
-    #
-    # thread1.start()
-    # thread2.start()
-    #
-    # thread1.join()
-    # thread2.join()
 
 if __name__ == "__main__":
     main()
