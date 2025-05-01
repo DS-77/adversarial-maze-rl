@@ -26,6 +26,7 @@ def maze_viz(maze, solution=None, iter=None ,path=None):
     plt.title("Simple Maze")
     if path is not None:
         plt.savefig(f"{path}/maze_gen_{iter}.png")
+        plt.close()
     else:
         plt.show()
 

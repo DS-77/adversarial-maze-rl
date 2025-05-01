@@ -14,10 +14,14 @@ import argparse as ap
 import torch.nn as nn
 from datetime import date
 import torch.optim as optim
+import matplotlib.pyplot as plt
 from model.enviornment import Environment
 from torch.utils.tensorboard import SummaryWriter
 from basic_maze_gen import solve_maze_gen, maze_viz
 from model.DQN_networks import GeneratorNetwork, SolverNetwork, ReplayBuffer
+
+generator_iteration_rewards = []
+solver_iteration_rewards = []
 
 def save_models(generator, solver, path_prefix, iteration):
     torch.save(generator.state_dict(), f"{path_prefix}/generator_ep{iteration}.pth")
@@ -26,6 +30,8 @@ def save_models(generator, solver, path_prefix, iteration):
 
 def train_generator(generator, solver_network, generator_optimizer, memory, num_solver_episodes,
                     num_episodes, maze_size, device, max_steps_per_episode=100):
+    episode_rewards = []
+
     for episode in range(num_episodes):
         input_vector = torch.randn(128).to(device)
         maze_array, start, goal = generator.generate_maze(input_vector)
@@ -73,6 +79,9 @@ def train_generator(generator, solver_network, generator_optimizer, memory, num_
         generator_optimizer.step()
 
         print(f"[GEN] Ep {episode}: Loss {generator_loss.item():.4f}, Reward Signal: {reward_signal:.2f}")
+        episode_rewards.append(reward_signal)
+
+    return episode_rewards
 
 
 
@@ -81,6 +90,7 @@ def train_solver(env, solver_network, memory, num_episodes, optimiser, device,
                  discount_factor=0.95, batch_size=32, max_steps=100):
 
     epsilon = epsilon_start
+    episode_rewards = []
 
     for episode in range(num_episodes):
         env.reset()
@@ -127,6 +137,9 @@ def train_solver(env, solver_network, memory, num_episodes, optimiser, device,
 
         epsilon = max(epsilon_end, epsilon * epsilon_decay)
         print(f"[SOL] Ep {episode}: Reward: {total_reward:.2f}, Epsilon: {epsilon:.3f}, Steps: {step_count}")
+        episode_rewards.append(total_reward)
+
+    return episode_rewards
 
 
 
@@ -201,7 +214,7 @@ def main():
 
         # Generator Training
         print(f"\n====== Training Generator ======")
-        train_generator(
+        generator_rewards = train_generator(
             generator=maze_generator,
             solver_network=maze_solver,
             generator_optimizer=gen_optimiser,
@@ -211,6 +224,21 @@ def main():
             maze_size=adaptive_maze_size,
             device=device
         )
+
+        avg_gen_reward = np.mean(generator_rewards[-gen_ep_num:])
+        generator_iteration_rewards.append(avg_gen_reward)
+
+        if (i + 1) % 5 == 0:
+            # Plotting the episode rewards
+            plt.figure(figsize=(12, 6))
+            plt.plot(generator_rewards, label="Generator Rewards per Episode")
+            plt.xlabel("Episode")
+            plt.ylabel("Reward")
+            plt.title("Solver Rewards vs. Episodes")
+            plt.legend()
+            solver_plot_path = f"{log_path}/generator_rewards_{i + 1}.png"
+            plt.savefig(solver_plot_path)
+            plt.close()
 
         # # Generate a maze to test the solver on (old way)
         # print(f"\n====== Testing Solver ======")
@@ -289,7 +317,7 @@ def main():
 
         # Solver Training
         print(f"\n====== Training Solver ======")
-        train_solver(
+        solver_rewards = train_solver(
             env=test_env,
             solver_network=maze_solver,
             memory=memory,
@@ -299,10 +327,38 @@ def main():
             batch_size=batch_size
         )
 
+        avg_sol_reward = np.mean(solver_rewards)
+        solver_iteration_rewards.append(avg_sol_reward)
+
+        if (i + 1) % 5 == 0:
+            # Plotting the episode rewards
+            plt.figure(figsize=(12, 6))
+            plt.plot(solver_rewards, label="Solver Rewards per Episode")
+            plt.xlabel("Episode")
+            plt.ylabel("Reward")
+            plt.title("Solver Rewards vs. Episodes")
+            plt.legend()
+            solver_plot_path = f"{log_path}/solver_rewards_{i + 1}.png"
+            plt.savefig(solver_plot_path)
+            plt.close()
+
         # Save models
-        save_models(maze_generator, maze_solver, path_prefix=checkpoint_path, iteration=i + 1)
+        if (i + 1) % 5 == 0:
+            save_models(maze_generator, maze_solver, path_prefix=checkpoint_path, iteration=i + 1)
 
     writer.close()
+
+    # Plot the rewards vs episode for both the generator and the solver
+    plt.figure(figsize=(12, 6))
+    plt.plot(generator_iteration_rewards, label="Generator Avg Reward per Iteration")
+    plt.plot(solver_iteration_rewards, label="Solver Avg Reward per Iteration")
+    plt.xlabel("Training Iteration")
+    plt.ylabel("Average Reward")
+    plt.title("Average Rewards per Iteration")
+    plt.legend()
+    iteration_plot_path = f"{log_path}/average_rewards_per_iteration.png"
+    plt.savefig(iteration_plot_path)
+    plt.close()
 
 if __name__ == "__main__":
     main()
