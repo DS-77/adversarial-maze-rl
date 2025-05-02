@@ -11,6 +11,7 @@ import numpy as np
 import argparse as ap
 from tqdm import tqdm
 from datetime import date
+import matplotlib.pyplot as plt
 from basic_maze_gen import maze_viz
 from model.enviornment import Environment
 from torch.utils.tensorboard import SummaryWriter
@@ -21,6 +22,8 @@ def save_models(generator, solver, path_prefix, iteration):
     torch.save(generator.generator.state_dict(), f"{path_prefix}/generator_ep_{iteration}.pth")
     torch.save(solver.policy.state_dict(), f"{path_prefix}/solver_ep_{iteration}.pth")
 
+generator_iteration_rewards = []
+solver_iteration_rewards = []
 
 def evaluate_solver(env, solver_ppo, episodes=10, max_steps=100):
     success_count = 0
@@ -51,6 +54,7 @@ def evaluate_solver(env, solver_ppo, episodes=10, max_steps=100):
 def train_solver(env, solver_ppo, num_episodes, device, max_steps=100):
     solver_memory = Memory()
     avg_reward = 0
+    total_episode_rewards = []
 
     for episode in range(num_episodes):
         state = env.reset()
@@ -72,17 +76,19 @@ def train_solver(env, solver_ppo, num_episodes, device, max_steps=100):
             steps += 1
 
         avg_reward += episode_reward
+        total_episode_rewards.append(episode_reward)
 
         # Update PPO policy
         solver_ppo.update(solver_memory, device)
         solver_memory.clear_memory()
 
     avg_reward = avg_reward / num_episodes
-    return avg_reward
+    return avg_reward, total_episode_rewards
 
 
-def train_generator_with_solver_feedback(generator_ppo, solver_ppo, num_episodes,
-                                         num_solver_episodes, maze_size, device, max_steps=100):
+def train_generator(generator_ppo, solver_ppo, num_episodes,
+                                         num_solver_episodes, maze_size, device, iteration, log_dir, max_steps=100):
+    total_episode_rewards = []
     for episode in range(num_episodes):
         # Generate a maze using the generator
         input_vector = torch.randn(128).to(device)
@@ -103,14 +109,30 @@ def train_generator_with_solver_feedback(generator_ppo, solver_ppo, num_episodes
 
         # Update generator based on reward
         loss = generator_ppo.update(input_vector, reward_signal)
+        total_episode_rewards.append(reward_signal)
 
         # Train solver on this maze
-        solver_reward = train_solver(env, solver_ppo, num_solver_episodes, device, max_steps)
+        solver_reward, total_solver_rewards = train_solver(env, solver_ppo, num_solver_episodes, device, max_steps)
+
+        avg_sol_reward = np.mean(total_solver_rewards)
+        solver_iteration_rewards.append(avg_sol_reward)
+
+        # Plot the rewards vs episode for solver
+        if (iteration + 1) % 5 == 0:
+            plt.figure(figsize=(12, 6))
+            plt.plot(total_solver_rewards, label="Solver Rewards per Episode")
+            plt.xlabel("Episode")
+            plt.ylabel("Reward")
+            plt.title("Solver Rewards vs. Episodes")
+            plt.legend()
+            solver_plot_path = f"{log_dir}/Solver_rewards_{iteration + 1}.png"
+            plt.savefig(solver_plot_path)
+            plt.close()
 
         print(f"[GEN] Ep {episode}: Loss {loss:.4f}, Reward: {reward_signal:.2f}, "
               f"Solver Success: {success_rate:.2f}, Avg Steps: {avg_steps:.1f}")
 
-    return loss
+    return loss, total_episode_rewards
 
 
 def main():
@@ -169,24 +191,41 @@ def main():
     for i in tqdm(range(train_iters)):
         print(f"\n====== Training Iteration {i + 1}/{train_iters} ======")
 
-        adaptive_maze_size = base_maze_size + (i // 5) * 2
-        adaptive_maze_size = adaptive_maze_size if adaptive_maze_size % 2 == 1 else adaptive_maze_size + 1
-        # adaptive_maze_size = 15
+        # adaptive_maze_size = base_maze_size + (i // 5) * 2
+        # adaptive_maze_size = adaptive_maze_size if adaptive_maze_size % 2 == 1 else adaptive_maze_size + 1
+        adaptive_maze_size = 15
 
         generator_ppo.maze_size = adaptive_maze_size
 
         # Train generator using solver feedback
-        gen_loss = train_generator_with_solver_feedback(
+        gen_loss, generator_rewards = train_generator(
             generator_ppo=generator_ppo,
             solver_ppo=solver_ppo,
             num_episodes=gen_ep_num,
             num_solver_episodes=sol_ep_num,
             maze_size=adaptive_maze_size,
+            iteration=i,
+            log_dir=log_path,
             device=device
         )
 
+        avg_gen_reward = np.mean(generator_rewards[-gen_ep_num:])
+        generator_iteration_rewards.append(avg_gen_reward)
+
         # Save models
         save_models(generator_ppo, solver_ppo, path_prefix=checkpoint_path, iteration=i + 1)
+
+        if (i + 1) % 5 == 0:
+            # Plotting the episode rewards
+            plt.figure(figsize=(12, 6))
+            plt.plot(generator_rewards, label="Generator Rewards per Episode")
+            plt.xlabel("Episode")
+            plt.ylabel("Reward")
+            plt.title("Generator Rewards vs. Episodes")
+            plt.legend()
+            solver_plot_path = f"{log_path}/generator_rewards_{i + 1}.png"
+            plt.savefig(solver_plot_path)
+            plt.close()
 
         # Generate a test maze to evaluate solver
         test_input = torch.randn(128).to(device)
@@ -210,6 +249,17 @@ def main():
 
     writer.close()
 
+    # Plot the rewards vs episode for both the generator and the solver
+    plt.figure(figsize=(12, 6))
+    plt.plot(generator_iteration_rewards, label="Generator Avg Reward per Iteration")
+    plt.plot(solver_iteration_rewards, label="Solver Avg Reward per Iteration")
+    plt.xlabel("Training Iteration")
+    plt.ylabel("Average Reward")
+    plt.title("Average Rewards per Iteration")
+    plt.legend()
+    iteration_plot_path = f"{log_path}/average_rewards_per_iteration.png"
+    plt.savefig(iteration_plot_path)
+    plt.close()
 
 if __name__ == "__main__":
     main()
