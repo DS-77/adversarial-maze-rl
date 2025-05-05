@@ -122,6 +122,8 @@ class GeneratorPPO:
         return maze, (start_x, start_y), (goal_x, goal_y)
 
     def update(self, input_vector, reward_signal):
+        torch.nn.utils.clip_grad_norm_(self.generator.parameters(), max_norm=0.5)
+
         # Forward pass
         flat_array = self.generator(input_vector)
 
@@ -164,7 +166,7 @@ class SolverPPO:
     def update(self, memory, device):
         # Monte Carlo estimate of rewards
         rewards = []
-
+        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=0.5)
         discounted_reward = 0
         for reward, is_terminal in zip(reversed(memory.rewards), reversed(memory.is_terminals)):
 
