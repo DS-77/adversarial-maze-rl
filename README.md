@@ -19,18 +19,20 @@ benchmark performance. Implemented in Python with PyTorch and NumPy, the experim
 128x4 (for a 15x15 maze) and an action space of four cardinal directions (up, down, left, right), utilising a 
 GPU-accelerated system for efficient training and generation.
 
-| Method     | Maze Size | Average Steps to Solution | Solvability Rate | Triviality | Difficulty |
-|------------|-----------|---------------------------|------------------|------------|------------|
-| DFS        |           |                           |                  |            |            |
-| Prim       |           |                           |                  |            |            |
-| RMG        |           |                           |                  |            |            |
-| DQN (Ours) |           |                           |                  |            |            |
-| PPO (Ours) |           |                           |                  |            |            | 
+| Method     | Maze Size | Average Steps to Solution | Solvability Rate $\uparrow$ | Average Triviality $\uparrow$ | Average Difficulty $\uparrow$ |
+|------------|-----------|---------------------------|-----------------------------|-------------------------------|-------------------------------|
+| DFS        | 15        | 42.940                    | 1.000                       | 4.630                         | 32.208                        |
+| Prim       | 15        | 13.540                    | 1.000                       | 10.020                        | 37.848                        |
+| RMG        | 15        | 8.000                     | 0.030                       | 7.190                         | 30.798                        |
+| DQN (Ours) | 15        | 5.429                     | 0.070                       | 4.630                         | 50.337                        |
+| PPO (Ours) | 15        | 4.800                     | 0.100                       | 17.000                        | 47.574                        | 
 
 - DFS $\rightarrow$ Depth First Search Algorithm
 - RMG $\rightarrow$ Random Maze Generator Policy
 - DQN $\rightarrow$ Deep Q-Learning Model
 - PPO $\rightarrow$ Proximal Policy Optimisation Model
+
+A higher triviality score indicates a less trivial the maze. Higher difficulty score indicates a more difficult maze.
 
 ## Installation
 It is recommended that you have Python 3.13 or greater.
@@ -90,6 +92,8 @@ Options:
   - --gen_lr GEN_LR       Generator learning rate.
   - --sol_lr SOL_LR       Solver learning rate.
 
+> The results from training (weights, sample maze images, and plots) will be available in the default `./runs` directory.
+
 ## How to evaluate the models
 
 ```commandline
@@ -100,7 +104,10 @@ Example: python eval_visualise.py --dqn_weights runs/exp_2025-04-30_DQN/weights/
 
 ## Future Works
 
-- 
+- Incorporate constraints for maze generation.
+- Experiment with different Adversarial training ratios.
+- Generate mazes on a spectrum rather than only binary.
+- Create a more robust reward system to encourage maze generation complexity.
 
 # Troubleshooting
 
